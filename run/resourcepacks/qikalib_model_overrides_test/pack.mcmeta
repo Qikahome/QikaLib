@@ -1,0 +1,6 @@
+{
+  "pack": {
+    "description": "QikaLib model override test: iron_ingot + custom_model_data=1 -> gold_ingot",
+    "pack_format": 15
+  }
+}

@@ -1,0 +1,178 @@
+// QikaLib / Forge 1.20.1 —— 单目标独立工程（per loader × MC 版本一份拷贝，见 TARGETS.md）
+// 构建用 ModDevGradle 的 legacy-forge 模式（1.20.1 走 legacyforge，1.21+/26.x 走 net.neoforged.moddev）
+plugins {
+    id 'maven-publish'
+    id 'net.neoforged.moddev.legacyforge' version '2.0.78'
+}
+
+group = mod_group_id
+version = mod_version
+
+base {
+    archivesName = "${mod_id}-${minecraft_version}-forge"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(17)
+    withSourcesJar()
+}
+
+repositories {
+    // Mixin 注解处理器：锁死来源，禁止 Gradle 去问那些在本机 TLS 握手失败的源
+    exclusiveContent {
+        forRepositories(
+                maven { url = 'https://bmclapi2.bangbang93.com/maven' },
+                maven { url = 'https://maven.minecraftforge.net/' }
+        )
+        filter { includeGroup 'org.spongepowered' }
+    }
+    // 国内镜像（缓解国外源过慢）
+    maven { url = 'https://maven.aliyun.com/repository/public' }
+    maven { url = 'https://maven.aliyun.com/repository/central' }
+    mavenCentral()
+    maven {
+        // Minecraft 运行库（text2speech 等 Mojang 专属）
+        url = 'https://libraries.minecraft.net/'
+    }
+    // 带 content 过滤的第三方源放在 neoforged 之前：本机访问 neoforged 会 TLS reset，
+    // 而 Gradle 遇到网络错误会整体中断解析
+    maven {
+        name = 'BlameJared Maven'
+        url = 'https://maven.blamejared.com'
+        content { includeGroup 'mezz.jei' }
+    }
+    maven {
+        url = 'https://cursemaven.com'
+        content { includeGroup 'curse.maven' }
+    }
+    maven {
+        // TConstruct / Mantle
+        name = "Progwml6's maven"
+        url = 'https://dvs1.progwml6.com/files/maven/'
+    }
+    maven { url = 'https://neoforged.forgecdn.net/releases' }
+    maven { url = 'https://neoforged.forgecdn.net/mojang-meta' }
+    maven {
+        url = 'https://maven.neoforged.net/releases'
+    }
+}
+
+legacyForge {
+    version = forge_version
+
+    // AT：GameRuleCondition 需要 GameRules.GAME_RULE_TYPES
+    accessTransformers {
+        file("${projectDir}/src/main/resources/META-INF/accesstransformer.cfg")
+    }
+
+    runs {
+        configureEach {
+            gameDirectory = project.file('run')
+            logLevel = org.slf4j.event.Level.DEBUG
+            // dev 环境 mod 是目录、没有 manifest，mixin config 必须显式传给 ModLauncher；
+            // 打包后由 jar manifest 的 MixinConfigs 负责
+            programArgument "--mixin.config"
+            programArgument "qikalib.mixins.json"
+        }
+
+        client { client() }
+        server { server() }
+    }
+
+    mods {
+        qikalib {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+mixin {
+    add sourceSets.main, "${mod_id}.refmap.json"
+}
+
+dependencies {
+    // TConstruct compat 的编译期依赖（不打包、不强制加载）；运行期始终由 ModList 守卫
+    modCompileOnly "slimeknights.mantle:Mantle:${mantle_version}"
+    modCompileOnly "slimeknights.tconstruct:TConstruct:${tconstruct_version}"
+    modRuntimeOnly "slimeknights.mantle:Mantle:${mantle_version}"
+    modRuntimeOnly "slimeknights.tconstruct:TConstruct:${tconstruct_version}"
+
+    // Create compat：机械手剩余物结算
+    modCompileOnly "curse.maven:create-328085:7178761"
+    modRuntimeOnly "curse.maven:create-328085:7178761"
+
+    // TwilightForest compat：拆解台不接受本库配方
+    modCompileOnly "curse.maven:the-twilight-forest-227639:4635921"
+    modRuntimeOnly "curse.maven:the-twilight-forest-227639:4635921"
+    modRuntimeOnly "curse.maven:cyclops-core-232758:7637992"
+
+    // 1.20.1 生产环境是 SRG 名，@Inject 的字符串目标必须靠 refmap 重映射
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+
+    // dev 运行环境周边 mod（不进 jar）
+    // JEI 必须 >= 15.56.0.204：TConstruct 3.12.0.220 要求 [15.56.0.204,)，
+    // 版本不满足时 mod 加载会失败，报错却指向 mixin config 读不到
+    modCompileOnly "mezz.jei:jei-1.20.1-forge:15.56.0.204"
+    modRuntimeOnly "mezz.jei:jei-1.20.1-forge:15.56.0.204"
+    modRuntimeOnly "curse.maven:inventory-profiles-next-495267:7565992"
+    modRuntimeOnly "curse.maven:libipn-679177:5208511"
+    modRuntimeOnly "curse.maven:kotlin-for-forge-351264:7291067"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            forge_version_range    : forge_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description,
+    ]
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties + [project: project]
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes([
+                'Specification-Title'   : mod_id,
+                'Specification-Vendor'  : mod_authors,
+                'Specification-Version' : '1',
+                'Implementation-Title'  : project.name,
+                'Implementation-Version': project.version,
+                'Implementation-Vendor' : mod_authors,
+                // Forge 1.20.1 通过 jar manifest 注册 mixin 配置
+                'MixinConfigs'          : "${mod_id}.mixins.json",
+        ])
+    }
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            artifactId = "${mod_id}-${minecraft_version}-forge"
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            name = 'GitHubPackages'
+            url = 'https://maven.pkg.github.com/Qikahome/QikaLib'
+            credentials {
+                username = System.getenv('GITHUB_ACTOR')
+                password = System.getenv('GITHUB_TOKEN')
+            }
+        }
+    }
+}

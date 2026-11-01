@@ -1,0 +1,11 @@
+{
+  "model": "minecraft:item/iron_ingot",
+  "overrides": [
+    {
+      "predicate": {
+        "minecraft:custom_model_data": 1
+      },
+      "model": "minecraft:item/gold_ingot"
+    }
+  ]
+}
