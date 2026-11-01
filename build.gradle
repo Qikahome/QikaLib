@@ -85,3 +85,29 @@ processResources {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
+
+afterEvaluate {
+    publishing {
+        publications {
+            register('mavenJava', MavenPublication) {
+                artifactId = "${mod_id}-${minecraft_version}-fabric"
+                // 新版 Loom 不再单独提供 remapJar，缺失时直接用 jar
+                artifact tasks.findByName('remapJar') ?: tasks.named('jar')
+                def sources = tasks.findByName('remapSourcesJar') ?: tasks.findByName('sourcesJar')
+                if (sources != null) {
+                    artifact sources
+                }
+            }
+        }
+        repositories {
+            maven {
+                name = 'GitHubPackages'
+                url = 'https://maven.pkg.github.com/Qikahome/QikaLib'
+                credentials {
+                    username = System.getenv('GITHUB_ACTOR')
+                    password = System.getenv('GITHUB_TOKEN')
+                }
+            }
+        }
+    }
+}
