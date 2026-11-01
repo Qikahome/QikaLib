@@ -1,0 +1,37 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+issueTrackerURL="https://github.com/Qikahome/QikaLib/issues/"
+
+[[mixins]]
+config="qikalib.mixins.json"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="${mod_authors}"
+description='''${mod_description}'''
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    mandatory=true
+    versionRange="${neo_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+# 不兼容“自带同名实现”的旧版本：这些版本自己就注册了同一批原料/配方 id。
+# type="optional" 表示“不装也没关系”；装了但版本落在区间外，FML 会直接报错拦下。
+[[dependencies.${mod_id}]]
+    modId="jsonmore"
+    type="optional"
+    versionRange="(1.2.14,)"
+    ordering="NONE"
+    side="BOTH"

@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "compatibilityLevel": "JAVA_25",
+  "package": "qikahome.qikalib.mixin",
+  "mixins": [
+    "MixinLevel"
+  ],
+  "client": [
+    "MixinClientItemInfoLoader"
+  ],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
