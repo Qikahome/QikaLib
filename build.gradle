@@ -1,0 +1,87 @@
+// QikaLib -> Fabric / Minecraft 26.1.2
+// 构建配置以 JsonMore Fabric1.21.1 为模板，去掉 JsonThings / Porting Lib / AutoSizedGUI / Mantle / JsonMore 专属依赖。
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.19.1'
+    id 'maven-publish'
+}
+
+group = mod_group_id
+version = mod_version
+
+base {
+    archivesName = "${mod_id}-${minecraft_version}-fabric"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    withSourcesJar()
+}
+
+repositories {
+    maven {
+        url 'https://maven.aliyun.com/repository/public'
+    }
+    mavenCentral()
+    maven {
+        // Minecraft 运行库
+        url "https://libraries.minecraft.net/"
+    }
+    maven {
+        url "https://maven.fabricmc.net/"
+    }
+    maven {
+        name = 'BlameJared Maven'
+        url = 'https://maven.blamejared.com'
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.property('minecraft_version')}"
+    // 26.1+ 的 Minecraft 官方 jar 已经是未混淆的，不需要（也没有）mappings
+    implementation "net.fabricmc:fabric-loader:${project.property('fabric_loader_version')}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.property('fabric_api_version')}"
+
+    compileOnly 'org.jetbrains:annotations:24.0.1'
+    compileOnly "com.google.code.findbugs:jsr305:3.0.2"
+
+    // JEI - 可选依赖（26.x 未混淆，普通 compileOnly/runtimeOnly）
+    compileOnly "mezz.jei:jei-${minecraft_version}-fabric:${jei_version}"
+    runtimeOnly "mezz.jei:jei-${minecraft_version}-fabric:${jei_version}"
+}
+
+loom {
+    runs {
+        configureEach {
+            runDir = 'run'
+        }
+        client {
+            client()
+        }
+        server {
+            server()
+        }
+    }
+}
+
+processResources {
+    var replaceProperties = [
+            version                     : project.version,
+            mod_id                      : mod_id,
+            mod_name                    : mod_name,
+            mod_license                 : mod_license,
+            mod_authors                 : mod_authors,
+            mod_description             : mod_description,
+            minecraft_version_range     : minecraft_version_range,
+            fabric_loader_version_range : fabric_loader_version_range,
+            fabric_api_version_range    : fabric_api_version_range
+    ]
+    inputs.properties replaceProperties
+
+    filesMatching(["fabric.mod.json", "pack.mcmeta"]) {
+        expand replaceProperties
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

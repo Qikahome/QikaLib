@@ -1,0 +1,17 @@
+.gradle/
+build/
+bin/
+out/
+
+.idea/
+.vscode/
+.eclipse/
+.settings/
+.classpath
+.project
+
+run/*
+!run/resourcepacks/
+
+.DS_Store
+Thumbs.db

@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "#jsonmore:item_application_tool",
+      "required": false
+    }
+  ]
+}
