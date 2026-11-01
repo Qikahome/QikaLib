@@ -14,6 +14,10 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
+java {
+    withSourcesJar()
+}
+
 println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
 
 neoForge {
@@ -130,12 +134,18 @@ tasks.named('jar', Jar).configure {
 publishing {
     publications {
         register('mavenJava', MavenPublication) {
-            artifact jar
+            artifactId = "${mod_id}-${minecraft_version}-neoforge"
+            from components.java
         }
     }
     repositories {
         maven {
-            url "file://${project.projectDir}/mcmodsrepo"
+            name = 'GitHubPackages'
+            url = 'https://maven.pkg.github.com/Qikahome/QikaLib'
+            credentials {
+                username = System.getenv('GITHUB_ACTOR')
+                password = System.getenv('GITHUB_TOKEN')
+            }
         }
     }
 }
