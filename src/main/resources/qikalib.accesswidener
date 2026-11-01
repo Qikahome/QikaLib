@@ -1,0 +1,11 @@
+accessWidener v2 named
+
+# GameRuleCondition 需要按名字查找 GameRules.Key
+accessible field net/minecraft/world/level/GameRules GAME_RULE_TYPES Ljava/util/Map;
+
+# ShapedHandlingRecipe 需要直接读取原版 pattern
+accessible field net/minecraft/world/item/crafting/ShapedRecipe pattern Lnet/minecraft/world/item/crafting/ShapedRecipePattern;
+
+# ItemModelOverrideInjector 复用原版 override 解析器（1.21.1 中是 protected）
+accessible class net/minecraft/client/renderer/block/model/ItemOverride$Deserializer
+accessible method net/minecraft/client/renderer/block/model/ItemOverride$Deserializer <init> ()V
