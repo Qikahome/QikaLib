@@ -1,0 +1,101 @@
+// QikaLib / Fabric 1.20.1 —— 单目标独立工程（per loader × MC 版本一份拷贝，见 TARGETS.md）
+plugins {
+    // 与 JsonMore Fabric1.20.1 一致：Loom 1.17.x（Gradle 9.x + Java 21 守护进程，编译 toolchain 仍是 17）
+    id 'fabric-loom' version '1.17.+'
+    id 'maven-publish'
+}
+
+group = mod_group_id
+version = mod_version
+
+base {
+    archivesName = "${mod_id}-${minecraft_version}-fabric"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(17)
+    withSourcesJar()
+}
+
+repositories {
+    maven {
+        // 第三方代理：镜像 fabricmc/mavenCentral 等，缓解国外源过慢（若失效可移除）
+        url 'https://repository.hanbings.io/proxy/'
+    }
+    maven {
+        url 'https://maven.aliyun.com/repository/public'
+    }
+    mavenCentral()
+    maven {
+        // Minecraft 运行库（text2speech 等 Mojang 专属，仅发布于官方库）
+        url 'https://libraries.minecraft.net/'
+    }
+    maven {
+        url 'https://maven.fabricmc.net/'
+    }
+    maven {
+        // CurseForge Maven（可选联动模组：JEI）
+        name = 'CurseForge'
+        url = 'https://cursemaven.com'
+        content {
+            includeGroup 'curse.maven'
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.property('minecraft_version')}"
+    // mojmap（官方映射），与 Forge 侧一致，源码可直接编译；不用 parchment（下载慢）
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.property('fabric_loader_version')}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.property('fabric_api_version')}"
+
+    // 可选联动模组（仅编译期 API + 开发运行期，不打包进产物）
+    modCompileOnly "curse.maven:jei-238222:${project.property('jei_cf_file')}"
+    modRuntimeOnly "curse.maven:jei-238222:${project.property('jei_cf_file')}"
+
+    compileOnly 'org.jetbrains:annotations:24.0.1'
+    compileOnly "com.google.code.findbugs:jsr305:3.0.2"
+}
+
+loom {
+    // GameRuleCondition 需要读取 GameRules.GAME_RULE_TYPES（1.20.1 中是 private）
+    accessWidenerPath = file("src/main/resources/qikalib.accesswidener")
+
+    mixin {
+        useLegacyMixinAp = true
+        defaultRefmapName = "qikalib.refmap.json"
+    }
+
+    runs {
+        configureEach {
+            runDir = 'run'
+        }
+        client {
+            client()
+        }
+        server {
+            server()
+        }
+    }
+}
+
+processResources {
+    var replaceProperties = [
+            version                     : project.version,
+            mod_id                      : mod_id,
+            minecraft_version_range     : minecraft_version_range,
+            fabric_loader_version_range : fabric_loader_version_range,
+            fabric_api_version_range    : fabric_api_version_range,
+            jei_range                   : jei_range
+    ]
+    inputs.properties replaceProperties
+
+    filesMatching(["fabric.mod.json", "pack.mcmeta"]) {
+        expand replaceProperties
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

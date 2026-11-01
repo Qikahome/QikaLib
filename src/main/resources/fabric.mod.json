@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "version": "${version}",
+  "name": "QikaLib",
+  "description": "Shared recipe / ingredient handling library extracted from JsonMore and QikasTconLib.",
+  "license": "MIT",
+  "authors": [
+    "Qikahome"
+  ],
+  "contact": {
+    "homepage": "https://github.com/Qikahome/QikaLib",
+    "issues": "https://github.com/Qikahome/QikaLib/issues"
+  },
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "qikahome.qikalib.QikaLib"
+    ],
+    "client": [
+      "qikahome.qikalib.QikaLib${'$'}ClientModEvents"
+    ],
+    "jei_mod_plugin": [
+      "qikahome.qikalib.compat.jei.QikaLibJEIPlugin"
+    ]
+  },
+  "accessWidener": "qikalib.accesswidener",
+  "mixins": [
+    "qikalib.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": "${fabric_loader_version_range}",
+    "fabric-api": "${fabric_api_version_range}",
+    "minecraft": "${minecraft_version_range}",
+    "java": ">=17"
+  },
+  "recommends": {
+    "jei": "${jei_range}"
+  }
+}

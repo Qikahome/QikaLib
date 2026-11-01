@@ -1,0 +1,14 @@
+{
+  "ingredient.qikalib.true": "任何东西",
+  "ingredient.qikalib.not": "除了 %s 以外的所有东西",
+  "ingredient.qikalib.regex": "注册名匹配 /%s/ 的物品",
+  "ingredient.qikalib.container.may": "可容纳物品的容器",
+  "ingredient.qikalib.container.contains": "内部有物品的容器",
+  "ingredient.qikalib.same_item.requires_same_group": "需要与其他同分组的物品相同",
+  "ingredient.qikalib.same_item.group": "分组id：%s",
+  "ui.qikalib.no_consume": "不消耗",
+  "recipe.qikalib.disabled": "条件未满足",
+  "recipe.qikalib.item_application": "物品交互",
+  "recipe.qikalib.item_application.sneaking.true": "需要潜行",
+  "recipe.qikalib.item_application.sneaking.false": "不可潜行"
+}

@@ -1,0 +1,8 @@
+accessWidener v2 named
+
+# Expose GameRules fields for GameRuleCondition
+accessible field net/minecraft/world/level/GameRules GAME_RULE_TYPES Ljava/util/Map;
+
+# ItemModelOverrideInjector 复用原版 override 解析器（1.20.1 中是 protected）
+accessible class net/minecraft/client/renderer/block/model/ItemOverride$Deserializer
+accessible method net/minecraft/client/renderer/block/model/ItemOverride$Deserializer <init> ()V
