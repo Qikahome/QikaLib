@@ -1,0 +1,45 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mixins]]
+config="qikalib.mixins.json"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="${mod_authors}"
+description='''${mod_description}'''
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    ordering="NONE"
+    side="BOTH"
+
+# JEI（Just Enough Items）依赖 - 可选依赖
+[[dependencies.${mod_id}]]
+    modId="jei"
+    type="optional"
+    ordering="NONE"
+    side="BOTH"
+
+# 不兼容“自带同名实现”的旧版本：JsonMore 自己就注册了同一批 jsonmore:* 原料/配方 id，
+# 与本库同时加载会撞 id。mandatory=false 只表示“不装也没关系”；装了但版本落在区间外，
+# FML 会直接报错拦下。
+[[dependencies.${mod_id}]]
+    modId="jsonmore"
+    type="optional"
+    versionRange="(1.2.14,)"
+    ordering="NONE"
+    side="BOTH"
+
+# AccessTransformer 配置（GameRuleCondition 需要 GameRules.GAME_RULE_TYPES）
+[[accessTransformers]]
+    file="META-INF/accesstransformer.cfg"

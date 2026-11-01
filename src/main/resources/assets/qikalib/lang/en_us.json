@@ -1,0 +1,14 @@
+{
+  "ingredient.qikalib.true": "Anything",
+  "ingredient.qikalib.not": "Anything except %s",
+  "ingredient.qikalib.regex": "Items whose id matches /%s/",
+  "ingredient.qikalib.container.may": "Container-like item",
+  "ingredient.qikalib.container.contains": "Container with items",
+  "ingredient.qikalib.same_item.requires_same_group": "Must be the same as other items in this group",
+  "ingredient.qikalib.same_item.group": "Group: %s",
+  "ui.qikalib.no_consume": "Does Not Consume",
+  "recipe.qikalib.disabled": "Disabled by Condition",
+  "recipe.qikalib.item_application": "Item Application",
+  "recipe.qikalib.item_application.sneaking.true": "Sneaking Required",
+  "recipe.qikalib.item_application.sneaking.false": "Not Sneaking"
+}

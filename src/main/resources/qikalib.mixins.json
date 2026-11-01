@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "compatibilityLevel": "JAVA_21",
+  "package": "qikahome.qikalib.mixin",
+  "mixins": [
+    "MixinLevel",
+    "compat.create.MixinMechanicalCrafterBlockEntity",
+    "compat.twilightforest.MixinUncraftingMenu",
+    "compat.twilightforest.MixinTwilightForestJEICompat"
+  ],
+  "client": [
+    "MixinModelBakery"
+  ],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
