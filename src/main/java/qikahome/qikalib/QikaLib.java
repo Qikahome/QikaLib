@@ -83,17 +83,21 @@ public class QikaLib {
 
     private void commonSetup(FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
-            registerIngredient("true", TrueIngredient.Serializer::new);
-            registerIngredient("not", NotIngredient.Serializer::new);
-            registerIngredient("regex", RegexIngredient.Serializer::new);
-            registerIngredient("keep_inventory_container", KeepInventoryContainerIngredient.Serializer::new);
-            registerIngredient("tool_damaging", ToolDamagingIngredient.Serializer::new);
-            registerIngredient("remainder_override", RemainderOverrideIngredient.Serializer::new);
-            registerIngredient("nbt_copy", NBTCopyIngredient.Serializer::new);
-            registerIngredient("item_display_override", ItemDisplayOverrideIngredient.Serializer::new);
-            registerIngredient("counted", CountedIngredient.Serializer::new);
-            registerIngredient("condition", ConditionIngredient.Serializer::new);
-            registerIngredient("same_item", SameItemIngredient.Serializer::new);
+            registerIngredient("true", TrueIngredient.Serializer.INSTANCE, TrueIngredient.Serializer::new);
+            registerIngredient("not", NotIngredient.Serializer.INSTANCE, NotIngredient.Serializer::new);
+            registerIngredient("regex", RegexIngredient.Serializer.INSTANCE, RegexIngredient.Serializer::new);
+            registerIngredient("keep_inventory_container", KeepInventoryContainerIngredient.Serializer.INSTANCE,
+                    KeepInventoryContainerIngredient.Serializer::new);
+            registerIngredient("tool_damaging", ToolDamagingIngredient.Serializer.INSTANCE,
+                    ToolDamagingIngredient.Serializer::new);
+            registerIngredient("remainder_override", RemainderOverrideIngredient.Serializer.INSTANCE,
+                    RemainderOverrideIngredient.Serializer::new);
+            registerIngredient("nbt_copy", NBTCopyIngredient.Serializer.INSTANCE, NBTCopyIngredient.Serializer::new);
+            registerIngredient("item_display_override", ItemDisplayOverrideIngredient.Serializer.INSTANCE,
+                    ItemDisplayOverrideIngredient.Serializer::new);
+            registerIngredient("counted", CountedIngredient.Serializer.INSTANCE, CountedIngredient.Serializer::new);
+            registerIngredient("condition", ConditionIngredient.Serializer.INSTANCE, ConditionIngredient.Serializer::new);
+            registerIngredient("same_item", SameItemIngredient.Serializer.INSTANCE, SameItemIngredient.Serializer::new);
 
             CraftingHelper.register(GameRuleCondition.Serializer.INSTANCE);
             CraftingHelper.register(GameRuleCondition.Serializer.LEGACY_INSTANCE);
@@ -103,13 +107,17 @@ public class QikaLib {
     /**
      * 同一个原料 type 在 {@code qikalib:} 与 {@code jsonmore:} 两个命名空间各注册一次。
      *
-     * <p>Forge 1.20.1 的 {@code CraftingHelper} 内部是 {@code BiMap} —— key 和 serializer <b>实例</b>
-     * 都要求唯一，所以旧 id 必须用独立实例，不能复用同一个 {@code INSTANCE}。
-     * Serializer 都是无状态的，两个实例行为完全一致。
+     * <p>Forge 1.20.1 的 {@code CraftingHelper} 内部是 {@code BiMap}，写网络包时用
+     * {@code ingredients.inverse().get(ingredient.getSerializer())} 反查 id。因此主 id 必须绑定
+     * 原料自身 {@code getSerializer()} 返回的那个 {@code INSTANCE} 实例，否则反查失败会抛
+     * {@code Tried to serialize unregistered Ingredient}；同时 BiMap 要求 value 唯一，
+     * 所以旧 id 只能用另一个（无状态的）新实例。
      */
-    private static void registerIngredient(String name, Supplier<IIngredientSerializer<? extends Ingredient>> factory) {
-        CraftingHelper.register(new ResourceLocation(MODID, name), factory.get());
-        CraftingHelper.register(new ResourceLocation(LEGACY_MODID, name), factory.get());
+    private static void registerIngredient(String name,
+            IIngredientSerializer<? extends Ingredient> serializer,
+            Supplier<IIngredientSerializer<? extends Ingredient>> legacyFactory) {
+        CraftingHelper.register(new ResourceLocation(MODID, name), serializer);
+        CraftingHelper.register(new ResourceLocation(LEGACY_MODID, name), legacyFactory.get());
     }
 
     /** 客户端入口：只在客户端注册模型 override 注入器的重载监听器。 */

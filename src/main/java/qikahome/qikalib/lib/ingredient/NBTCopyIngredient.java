@@ -39,10 +39,19 @@ public class NBTCopyIngredient extends SelfHandlingIngredient {
     private final Mode mode;
     @Nullable
     private final List<String> tags;
+    /** 按路径定向复制（类似 copy_nbt），存在时优先于整份 NBT 复制 */
+    @Nullable
+    private final List<CopyOp> copies;
     @Nullable
     private final transient Set<PathSpec> parsedPaths;
     @Nullable
     private final transient Set<PathSpec> excludedPaths;
+
+    /** 一条定向复制：把源的 source 路径复制到目标的 target 路径；op = replace / merge */
+    public record CopyOp(String op, String source, String target) {
+        public static final String OP_REPLACE = "replace";
+        public static final String OP_MERGE = "merge";
+    }
 
     private static class PathSpec {
         final List<String> keys;
@@ -55,13 +64,19 @@ public class NBTCopyIngredient extends SelfHandlingIngredient {
     }
 
     public NBTCopyIngredient(Ingredient ingredient, Mode mode) {
-        this(ingredient, mode, null);
+        this(ingredient, mode, null, null);
     }
 
     public NBTCopyIngredient(Ingredient ingredient, Mode mode, @Nullable List<String> tags) {
+        this(ingredient, mode, tags, null);
+    }
+
+    public NBTCopyIngredient(Ingredient ingredient, Mode mode, @Nullable List<String> tags,
+            @Nullable List<CopyOp> copies) {
         super(ingredient, false);
         this.mode = mode;
         this.tags = tags;
+        this.copies = copies;
 
         if (tags != null && !tags.isEmpty()) {
             List<String> includes = new ArrayList<>();
@@ -126,7 +141,75 @@ public class NBTCopyIngredient extends SelfHandlingIngredient {
     public void outputModify(ItemStack matched, ItemStack output) {
         if (matched.isEmpty() || output.isEmpty())
             return;
+        if (copies != null && !copies.isEmpty()) {
+            copyPaths(matched, output);
+            return;
+        }
         copyNBT(output, matched);
+    }
+
+    /** 按 copies 指定的路径从 matched 复制到 output */
+    private void copyPaths(ItemStack matched, ItemStack output) {
+        CompoundTag sourceNBT = matched.getTag();
+        if (sourceNBT == null) {
+            return;
+        }
+        CompoundTag targetNBT = output.getOrCreateTag();
+        for (CopyOp copy : copies) {
+            Tag value = getPath(sourceNBT, copy.source());
+            if (value == null) {
+                continue;
+            }
+            Tag existing = getPath(targetNBT, copy.target());
+            if (CopyOp.OP_MERGE.equals(copy.op()) && existing instanceof CompoundTag targetCompound
+                    && value instanceof CompoundTag sourceCompound) {
+                targetCompound.merge(sourceCompound.copy());
+            } else {
+                setPath(targetNBT, copy.target(), value.copy());
+            }
+        }
+    }
+
+    /** 按点分隔的 compound 路径取值；路径为空表示整个根 */
+    @Nullable
+    private static Tag getPath(CompoundTag root, String path) {
+        if (path.isEmpty()) {
+            return root;
+        }
+        Tag current = root;
+        for (String key : path.split("\\.")) {
+            if (key.isEmpty() || !(current instanceof CompoundTag compound)) {
+                return null;
+            }
+            current = compound.get(key);
+            if (current == null) {
+                return null;
+            }
+        }
+        return current;
+    }
+
+    /** 按点分隔的 compound 路径写入，缺失的中间 compound 自动创建 */
+    private static void setPath(CompoundTag root, String path, Tag value) {
+        String[] keys = path.split("\\.");
+        CompoundTag current = root;
+        for (int i = 0; i < keys.length - 1; i++) {
+            if (keys[i].isEmpty()) {
+                return;
+            }
+            Tag child = current.get(keys[i]);
+            CompoundTag childCompound;
+            if (child instanceof CompoundTag existing) {
+                childCompound = existing;
+            } else {
+                childCompound = new CompoundTag();
+                current.put(keys[i], childCompound);
+            }
+            current = childCompound;
+        }
+        if (!keys[keys.length - 1].isEmpty()) {
+            current.put(keys[keys.length - 1], value);
+        }
     }
 
     public void copyNBT(ItemStack target, ItemStack source) {
@@ -308,6 +391,17 @@ public class NBTCopyIngredient extends SelfHandlingIngredient {
                 json.add("tags", tagsArray);
             }
         }
+        if (copies != null && !copies.isEmpty()) {
+            JsonArray copiesArray = new JsonArray();
+            for (CopyOp copy : copies) {
+                JsonObject entry = new JsonObject();
+                entry.addProperty("op", copy.op());
+                entry.addProperty("source", copy.source());
+                entry.addProperty("target", copy.target());
+                copiesArray.add(entry);
+            }
+            json.add("copies", copiesArray);
+        }
         return json;
     }
 
@@ -328,7 +422,15 @@ public class NBTCopyIngredient extends SelfHandlingIngredient {
                     tags.add(buffer.readUtf());
                 }
             }
-            return new NBTCopyIngredient(ingredient, mode, tags);
+            List<CopyOp> copies = null;
+            if (buffer.readBoolean()) {
+                int copyCount = buffer.readVarInt();
+                copies = new java.util.ArrayList<>();
+                for (int i = 0; i < copyCount; i++) {
+                    copies.add(new CopyOp(buffer.readUtf(), buffer.readUtf(), buffer.readUtf()));
+                }
+            }
+            return new NBTCopyIngredient(ingredient, mode, tags, copies);
         }
 
         @Override
@@ -368,7 +470,25 @@ public class NBTCopyIngredient extends SelfHandlingIngredient {
                 ingredient = Ingredient.fromJson(ingredientJson);
             }
 
-            return new NBTCopyIngredient(ingredient, mode, tags);
+            List<CopyOp> copies = null;
+            if (json.has("copies")) {
+                JsonElement copiesElement = json.get("copies");
+                if (!copiesElement.isJsonArray()) {
+                    throw new JsonParseException("nbt_copy 'copies' must be an array");
+                }
+                copies = new java.util.ArrayList<>();
+                for (JsonElement element : copiesElement.getAsJsonArray()) {
+                    JsonObject entry = GsonHelper.convertToJsonObject(element, "copies");
+                    String op = GsonHelper.getAsString(entry, "op", CopyOp.OP_REPLACE);
+                    if (!CopyOp.OP_REPLACE.equals(op) && !CopyOp.OP_MERGE.equals(op)) {
+                        throw new JsonParseException("Invalid nbt_copy op: " + op);
+                    }
+                    copies.add(new CopyOp(op, GsonHelper.getAsString(entry, "source"),
+                            GsonHelper.getAsString(entry, "target")));
+                }
+            }
+
+            return new NBTCopyIngredient(ingredient, mode, tags, copies);
         }
 
         @Override
@@ -380,6 +500,15 @@ public class NBTCopyIngredient extends SelfHandlingIngredient {
                 buffer.writeVarInt(ingredient.tags.size());
                 for (String tag : ingredient.tags) {
                     buffer.writeUtf(tag);
+                }
+            }
+            buffer.writeBoolean(ingredient.copies != null && !ingredient.copies.isEmpty());
+            if (ingredient.copies != null && !ingredient.copies.isEmpty()) {
+                buffer.writeVarInt(ingredient.copies.size());
+                for (CopyOp copy : ingredient.copies) {
+                    buffer.writeUtf(copy.op());
+                    buffer.writeUtf(copy.source());
+                    buffer.writeUtf(copy.target());
                 }
             }
         }

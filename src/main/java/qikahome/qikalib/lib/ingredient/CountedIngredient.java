@@ -21,10 +21,17 @@ public class CountedIngredient extends SelfHandlingIngredient {
     public static final StringTag NO_CONSUME = StringTag.valueOf("{\"translate\":\"ui.qikalib.no_consume\"}");
 
     private final int count;
+    /** 剩余物数量倍率；默认等于 {@link #count}，可用 JSON 的 {@code remainder_multiply} 覆盖。 */
+    private final int remainderMultiply;
 
     public CountedIngredient(Ingredient ingredient, int count) {
+        this(ingredient, count, count);
+    }
+
+    public CountedIngredient(Ingredient ingredient, int count, int remainderMultiply) {
         super(ingredient, false);
         this.count = count;
+        this.remainderMultiply = remainderMultiply;
     }
 
     @Override
@@ -38,7 +45,7 @@ public class CountedIngredient extends SelfHandlingIngredient {
             return stack2;
         }
         stack.shrink(count - 1); // Unsafe
-        remainder.setCount(remainder.getCount() * count);
+        remainder.setCount(remainder.getCount() * remainderMultiply);
         return remainder;
     }
 
@@ -83,6 +90,8 @@ public class CountedIngredient extends SelfHandlingIngredient {
         json.addProperty("type", ID.toString());
         json.add("ingredient", ingredient.toJson());
         json.addProperty("count", count);
+        if (remainderMultiply != count)
+            json.addProperty("remainder_multiply", remainderMultiply);
         return json;
     }
 
@@ -93,7 +102,8 @@ public class CountedIngredient extends SelfHandlingIngredient {
         public CountedIngredient parse(FriendlyByteBuf buffer) {
             Ingredient ingredient = Ingredient.fromNetwork(buffer);
             int count = buffer.readVarInt();
-            return new CountedIngredient(ingredient, count);
+            int remainderMultiply = buffer.readVarInt();
+            return new CountedIngredient(ingredient, count, remainderMultiply);
         }
 
         @Override
@@ -103,6 +113,7 @@ public class CountedIngredient extends SelfHandlingIngredient {
             }
 
             int count = GsonHelper.getAsInt(json, "count", 1);
+            int remainderMultiply = readRemainderMultiply(json, count);
             Ingredient ingredient;
             if (json.has("remainder_override")) {
                 ingredient = RemainderOverrideIngredient.Serializer.INSTANCE.parse(json);
@@ -111,13 +122,27 @@ public class CountedIngredient extends SelfHandlingIngredient {
                 ingredient = Ingredient.fromJson(ingredientJson);
             }
 
-            return new CountedIngredient(ingredient, count);
+            return new CountedIngredient(ingredient, count, remainderMultiply);
         }
 
         @Override
         public void write(FriendlyByteBuf buffer, CountedIngredient ingredient) {
             ingredient.ingredient.toNetwork(buffer);
             buffer.writeVarInt(ingredient.count);
+            buffer.writeVarInt(ingredient.remainderMultiply);
         }
+    }
+
+    /**
+     * 解析 {@code remainder_multiply}：数字表示倍率，布尔值表示「true = 按 count 乘 / false = 不乘」，
+     * 缺省时按 count 乘（保持旧行为）。
+     */
+    static int readRemainderMultiply(JsonObject json, int count) {
+        if (!json.has("remainder_multiply"))
+            return count;
+        JsonElement element = json.get("remainder_multiply");
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isBoolean())
+            return element.getAsBoolean() ? count : 1;
+        return GsonHelper.convertToInt(element, "remainder_multiply");
     }
 }
